@@ -1,0 +1,46 @@
+import { NestFactory } from '@nestjs/core';
+import { AppModule } from './app.module';
+import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import * as fs from 'fs';
+import * as path from 'path';
+
+async function bootstrap() {
+  const httpsOptions =
+    fs.existsSync('cert/key.pem') && fs.existsSync('cert/cert.pem')
+      ? {
+          key: fs.readFileSync(path.join(__dirname, '..', 'cert/key.pem')),
+          cert: fs.readFileSync(path.join(__dirname, '..', 'cert/cert.pem')),
+        }
+      : undefined;
+
+  const app = await NestFactory.create(AppModule, {
+    httpsOptions,
+  });
+
+  app.setGlobalPrefix('api');
+
+  const config = new DocumentBuilder()
+    .setTitle('Person.API.Backend')
+    .setDescription('Este microservicio actúa como gateway del frontend y se comunica con el Core.')
+    .setContact('Luis Felipe Reyes Baez', '', 'reyesbaezluisfelipe@gmail.com')
+    .setVersion('1.0')
+    .addBearerAuth(
+      {
+        type: 'http',
+        scheme: 'bearer',
+        bearerFormat: 'JWT',
+        name: 'Authorization',
+        description: 'Introduce el token JWT en este campo: Bearer <token>',
+        in: 'header',
+      },
+      'access-token',
+    )
+    .build();
+
+  const document = SwaggerModule.createDocument(app, config);
+  SwaggerModule.setup('swagger', app, document);
+
+  const port = process.env.PORT || 3000;
+  await app.listen(port);
+}
+bootstrap();
